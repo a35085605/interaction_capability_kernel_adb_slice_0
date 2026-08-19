@@ -19,7 +19,7 @@ from adb.server.lifecycle.command import (
 from adb.server.status.model import AdbServerStatus
 from adb.server.status.query import AdbServerStatusReader
 from eventing import EventPublisher
-from native_attempt import NativeAttemptResult, NativeAttemptStatus
+from native_attempt import NativeAttemptResult
 
 
 _MonotonicClock = Callable[[], float]
@@ -55,11 +55,16 @@ class AdbServerAvailability(str, Enum):
 
 
 class AdbServerEnsureStatus(str, Enum):
-    """Terminal status of ADB server availability orchestration."""
+    """Whether the requested observable ADB server condition was satisfied."""
 
     SATISFIED = "satisfied"
-    FAILED = "failed"
-    TIMED_OUT = "timed_out"
+    UNSATISFIED = "unsatisfied"
+
+
+class AdbServerEnsureUnsatisfiedReason(str, Enum):
+    """Why an ensure episode terminated without satisfying its requested condition."""
+
+    DEADLINE_EXCEEDED = "deadline_exceeded"
 
 
 class AdbServerSatisfaction(str, Enum):
@@ -162,6 +167,7 @@ class AdbServerEnsureResult:
     operation: AdbServerEnsureOperation
     status: AdbServerEnsureStatus
     satisfaction: AdbServerSatisfaction | None
+    unsatisfied_reason: AdbServerEnsureUnsatisfiedReason | None
     attempts: tuple[NativeAttemptResult, ...]
     final_probe: AdbServerProbeResult
 
@@ -178,6 +184,13 @@ class AdbServerEnsureResult:
             AdbServerSatisfaction,
         ):
             raise TypeError("satisfaction must be AdbServerSatisfaction or None")
+        if self.unsatisfied_reason is not None and not isinstance(
+            self.unsatisfied_reason,
+            AdbServerEnsureUnsatisfiedReason,
+        ):
+            raise TypeError(
+                "unsatisfied_reason must be AdbServerEnsureUnsatisfiedReason or None"
+            )
         if not isinstance(self.attempts, tuple) or not all(
             isinstance(attempt, NativeAttemptResult) for attempt in self.attempts
         ):
@@ -195,11 +208,15 @@ class AdbServerEnsureResult:
         if self.status is AdbServerEnsureStatus.SATISFIED:
             if self.satisfaction is None:
                 raise ValueError("satisfied ensure result requires satisfaction")
+            if self.unsatisfied_reason is not None:
+                raise ValueError("satisfied ensure result cannot carry unsatisfied_reason")
             if not condition_met:
                 raise ValueError("satisfied ensure result requires matching final probe")
         else:
             if self.satisfaction is not None:
                 raise ValueError("unsatisfied ensure result cannot carry satisfaction")
+            if self.unsatisfied_reason is None:
+                raise ValueError("unsatisfied ensure result requires unsatisfied_reason")
             if condition_met:
                 raise ValueError("matching final probe requires satisfied ensure status")
         if (
@@ -285,6 +302,7 @@ class AdbServerEnsureOrchestrator:
                 operation=operation,
                 status=AdbServerEnsureStatus.SATISFIED,
                 satisfaction=AdbServerSatisfaction.ALREADY_SATISFIED,
+                unsatisfied_reason=None,
                 attempts=(),
                 final_probe=first_probe,
             )
@@ -306,15 +324,11 @@ class AdbServerEnsureOrchestrator:
         while final_probe.availability is not desired:
             remaining = deadline - self._monotonic()
             if remaining <= 0.0:
-                terminal_status = (
-                    AdbServerEnsureStatus.FAILED
-                    if attempt.status is NativeAttemptStatus.FAILED
-                    else AdbServerEnsureStatus.TIMED_OUT
-                )
                 result = AdbServerEnsureResult(
                     operation=operation,
-                    status=terminal_status,
+                    status=AdbServerEnsureStatus.UNSATISFIED,
                     satisfaction=None,
+                    unsatisfied_reason=AdbServerEnsureUnsatisfiedReason.DEADLINE_EXCEEDED,
                     attempts=(attempt,),
                     final_probe=final_probe,
                 )
@@ -326,6 +340,7 @@ class AdbServerEnsureOrchestrator:
             operation=operation,
             status=AdbServerEnsureStatus.SATISFIED,
             satisfaction=AdbServerSatisfaction.ACHIEVED,
+            unsatisfied_reason=None,
             attempts=(attempt,),
             final_probe=final_probe,
         )
@@ -341,6 +356,7 @@ __all__ = [
     "AdbServerEnsurePolicy",
     "AdbServerEnsureResult",
     "AdbServerEnsureStatus",
+    "AdbServerEnsureUnsatisfiedReason",
     "AdbServerEnsureUnavailable",
     "AdbServerProbeResult",
     "AdbServerSatisfaction",
