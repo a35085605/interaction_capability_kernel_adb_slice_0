@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Protocol
 
 from adb._internal.client import AdbServiceClient
 from adb._internal.proto import parse_server_status
 from adb.server.endpoint import AdbServerEndpoint
 from adb.server.status.model import AdbServerStatus
+
+
+class AdbServerStatusReader(Protocol):
+    """Read the current AOSP host-side ADB server status."""
+
+    def read(self, endpoint: AdbServerEndpoint) -> AdbServerStatus:
+        ...
 
 
 _ClientFactory = Callable[[AdbServerEndpoint], AdbServiceClient]
@@ -28,4 +36,4 @@ class SmartSocketAdbServerStatusReader:
         return parse_server_status(payload)
 
 
-__all__ = ["SmartSocketAdbServerStatusReader"]
+__all__ = ["AdbServerStatusReader", "SmartSocketAdbServerStatusReader"]

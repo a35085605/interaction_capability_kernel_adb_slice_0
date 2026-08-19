@@ -5,7 +5,7 @@ from adb.server.status.model import (
     AdbServerStatus,
     AdbUsbBackend,
 )
-from adb.server.status.query import AdbServerStatusReader
+from adb.server.status.reader import AdbServerStatusReader
 
 __all__ = [
     "AdbMdnsBackend",

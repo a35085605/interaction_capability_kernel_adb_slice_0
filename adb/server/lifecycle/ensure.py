@@ -16,7 +16,7 @@ from adb.server.lifecycle.command import (
     AdbServerStopper,
 )
 from adb.server.status.model import AdbServerStatus
-from adb.server.status.query import AdbServerStatusReader
+from adb.server.status.reader import AdbServerStatusReader
 from eventing import EventPublisher
 from native_attempt import NativeAttemptResult
 
