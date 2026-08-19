@@ -3,18 +3,18 @@ from __future__ import annotations
 from threading import Lock
 from typing import Protocol, runtime_checkable
 
-from adb.server.endpoint import AdbServerEndpoint
+from adb.server.endpoint.model import AdbServerEndpoint
 
 
-class AdbServerProvisioningError(RuntimeError):
+class AdbServerEndpointProvisioningError(RuntimeError):
     """Base error for ADB server endpoint provisioning failures."""
 
 
-class AdbServerEndpointConflictError(AdbServerProvisioningError):
+class AdbServerEndpointConflictError(AdbServerEndpointProvisioningError):
     """An endpoint is already reserved in this provisioning scope."""
 
 
-class AdbServerEndpointExhaustedError(AdbServerProvisioningError):
+class AdbServerEndpointExhaustedError(AdbServerEndpointProvisioningError):
     """The endpoint allocator could not produce another unreserved endpoint."""
 
 
@@ -118,7 +118,7 @@ __all__ = [
     "AdbServerEndpointConflictError",
     "AdbServerEndpointExhaustedError",
     "AdbServerEndpointProvisioner",
-    "AdbServerProvisioningError",
+    "AdbServerEndpointProvisioningError",
     "InMemoryAdbServerEndpointProvisioner",
     "SequentialAdbServerEndpointAllocator",
 ]
