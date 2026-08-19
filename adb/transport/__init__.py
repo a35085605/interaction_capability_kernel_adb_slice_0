@@ -9,7 +9,10 @@ from adb.transport.selection import (
 )
 from adb.transport.features import AdbTransportFeatures
 from adb.transport.binding import (
-    AdbTransportBindingConfiguration,
+    AdbConfiguredTransport,
+    AdbTcpTransportConfiguration,
+    AdbTransportConfiguration,
+    AdbUsbTransportConfiguration,
     AdbTransportBindingResolution,
     AdbTransportBindingResolutionStatus,
     resolve_transport_binding,
@@ -56,9 +59,12 @@ __all__ = [
     "AdbObservationSessionId",
     "AdbTrackedDevice",
     "AdbTrackedDeviceLookup",
-    "AdbTransportBindingConfiguration",
+    "AdbConfiguredTransport",
+    "AdbTcpTransportConfiguration",
     "AdbTransportBindingResolution",
     "AdbTransportBindingResolutionStatus",
+    "AdbTransportConfiguration",
+    "AdbUsbTransportConfiguration",
     "AdbTransportPreparation",
     "AdbTransportPreparationOrchestrator",
     "AdbTransportPreparationPolicy",

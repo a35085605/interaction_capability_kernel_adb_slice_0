@@ -9,7 +9,7 @@ from adb.supervision.model import (
     AdbServerRecoveryCycleId,
 )
 from adb.transport.binding import (
-    AdbTransportBindingConfiguration,
+    AdbConfiguredTransport,
     AdbTransportBindingResolution,
 )
 from adb.transport.observation.contracts import AdbObservationSessionId
@@ -49,12 +49,12 @@ class AdbTransportBindingResolutionChanged:
 class AdbTransportBindingRecoveryExhausted:
     """Signal that automatic recovery ended unsatisfied for one registered binding."""
 
-    configuration: AdbTransportBindingConfiguration
+    configuration: AdbConfiguredTransport
     result: AdbTransportPreparationResult
 
     def __post_init__(self) -> None:
-        if not isinstance(self.configuration, AdbTransportBindingConfiguration):
-            raise TypeError("configuration must be AdbTransportBindingConfiguration")
+        if not isinstance(self.configuration, AdbConfiguredTransport):
+            raise TypeError("configuration must be AdbConfiguredTransport")
         if not isinstance(self.result, AdbTransportPreparationResult):
             raise TypeError("result must be AdbTransportPreparationResult")
         if self.result.operation.endpoint != self.configuration.endpoint:
