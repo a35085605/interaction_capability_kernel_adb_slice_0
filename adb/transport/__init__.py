@@ -7,7 +7,10 @@ from adb.transport.selection import (
     AdbTransportId,
     AdbTransportSelector,
 )
-from adb.transport.features import AdbTransportFeatures
+from adb.transport.features import (
+    AdbTransportFeatures,
+    AdbTransportFeaturesReader,
+)
 from adb.transport.configuration import (
     AdbConfiguredTransport,
     AdbTcpTransportConfiguration,
@@ -19,7 +22,6 @@ from adb.transport.resolution import (
     AdbConfiguredTransportResolutionStatus,
     resolve_configured_transport,
 )
-from adb.transport.query import AdbTransportFeaturesReader
 from adb.transport.orchestration import (
     AdbTransportPreparation,
     AdbTransportPreparationPolicy,
