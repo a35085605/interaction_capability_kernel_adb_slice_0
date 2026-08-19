@@ -6,7 +6,6 @@ from enum import Enum
 import math
 from numbers import Real
 from time import monotonic, sleep
-from typing import TypeAlias
 
 from adb.server.endpoint import AdbServerEndpoint
 from adb.errors import AdbError, AdbServerConnectionError
@@ -47,7 +46,7 @@ def _normalize_optional_text(value: object, *, field_name: str) -> str | None:
 
 
 class AdbServerAvailability(str, Enum):
-    """Domain-local observation of one configured ADB server endpoint."""
+    """Domain-local availability state of one configured ADB server endpoint."""
 
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
@@ -101,34 +100,22 @@ class AdbServerEnsurePolicy:
 
 
 @dataclass(frozen=True, slots=True)
-class AdbServerEnsureAvailable:
-    """Request domain orchestration to establish and verify server availability."""
+class AdbServerEnsureAvailability:
+    """Request orchestration to establish and verify one server availability condition."""
 
     endpoint: AdbServerEndpoint
+    desired: AdbServerAvailability
     policy: AdbServerEnsurePolicy
 
     def __post_init__(self) -> None:
         if not isinstance(self.endpoint, AdbServerEndpoint):
             raise TypeError("endpoint must be AdbServerEndpoint")
+        if not isinstance(self.desired, AdbServerAvailability):
+            raise TypeError("desired must be AdbServerAvailability")
+        if self.desired is AdbServerAvailability.INDETERMINATE:
+            raise ValueError("desired availability cannot be INDETERMINATE")
         if not isinstance(self.policy, AdbServerEnsurePolicy):
             raise TypeError("policy must be AdbServerEnsurePolicy")
-
-
-@dataclass(frozen=True, slots=True)
-class AdbServerEnsureUnavailable:
-    """Request domain orchestration to establish and verify server unavailability."""
-
-    endpoint: AdbServerEndpoint
-    policy: AdbServerEnsurePolicy
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.endpoint, AdbServerEndpoint):
-            raise TypeError("endpoint must be AdbServerEndpoint")
-        if not isinstance(self.policy, AdbServerEnsurePolicy):
-            raise TypeError("policy must be AdbServerEnsurePolicy")
-
-
-AdbServerEnsureOperation: TypeAlias = AdbServerEnsureAvailable | AdbServerEnsureUnavailable
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,7 +151,7 @@ class AdbServerProbeResult:
 class AdbServerEnsureResult:
     """Terminal evidence produced by ADB server availability orchestration."""
 
-    operation: AdbServerEnsureOperation
+    operation: AdbServerEnsureAvailability
     status: AdbServerEnsureStatus
     satisfaction: AdbServerSatisfaction | None
     unsatisfied_reason: AdbServerEnsureUnsatisfiedReason | None
@@ -172,11 +159,8 @@ class AdbServerEnsureResult:
     final_probe: AdbServerProbeResult
 
     def __post_init__(self) -> None:
-        if not isinstance(
-            self.operation,
-            (AdbServerEnsureAvailable, AdbServerEnsureUnavailable),
-        ):
-            raise TypeError("operation must be an ADB server ensure operation")
+        if not isinstance(self.operation, AdbServerEnsureAvailability):
+            raise TypeError("operation must be AdbServerEnsureAvailability")
         if not isinstance(self.status, AdbServerEnsureStatus):
             raise TypeError("status must be AdbServerEnsureStatus")
         if self.satisfaction is not None and not isinstance(
@@ -199,12 +183,7 @@ class AdbServerEnsureResult:
             raise TypeError("final_probe must be AdbServerProbeResult")
         if self.final_probe.endpoint != self.operation.endpoint:
             raise ValueError("final probe endpoint must match ensure operation")
-        desired = (
-            AdbServerAvailability.AVAILABLE
-            if isinstance(self.operation, AdbServerEnsureAvailable)
-            else AdbServerAvailability.UNAVAILABLE
-        )
-        condition_met = self.final_probe.availability is desired
+        condition_met = self.final_probe.availability is self.operation.desired
         if self.status is AdbServerEnsureStatus.SATISFIED:
             if self.satisfaction is None:
                 raise ValueError("satisfied ensure result requires satisfaction")
@@ -284,18 +263,14 @@ class AdbServerEnsureOrchestrator:
         self._publisher.publish(AdbServerProbeCompleted(result))
         return result
 
-    def ensure(self, operation: AdbServerEnsureOperation) -> AdbServerEnsureResult:
+    def ensure(self, operation: AdbServerEnsureAvailability) -> AdbServerEnsureResult:
         from adb.server.signal import AdbServerCommandCompleted, AdbServerEnsureCompleted
 
-        if not isinstance(operation, (AdbServerEnsureAvailable, AdbServerEnsureUnavailable)):
-            raise TypeError("operation must be an ADB server ensure operation")
+        if not isinstance(operation, AdbServerEnsureAvailability):
+            raise TypeError("operation must be AdbServerEnsureAvailability")
         if operation.endpoint != self.endpoint:
             raise ValueError("operation endpoint does not match configured ADB server endpoint")
-        desired = (
-            AdbServerAvailability.AVAILABLE
-            if isinstance(operation, AdbServerEnsureAvailable)
-            else AdbServerAvailability.UNAVAILABLE
-        )
+        desired = operation.desired
         first_probe = self.probe()
         if first_probe.availability is desired:
             result = AdbServerEnsureResult(
@@ -311,7 +286,7 @@ class AdbServerEnsureOrchestrator:
         deadline = self._monotonic() + operation.policy.timeout_seconds
         command = (
             AdbServerStart(operation.endpoint)
-            if isinstance(operation, AdbServerEnsureAvailable)
+            if desired is AdbServerAvailability.AVAILABLE
             else AdbServerStop(operation.endpoint)
         )
         attempt = (
@@ -350,14 +325,12 @@ class AdbServerEnsureOrchestrator:
 
 __all__ = [
     "AdbServerAvailability",
-    "AdbServerEnsureAvailable",
-    "AdbServerEnsureOperation",
+    "AdbServerEnsureAvailability",
     "AdbServerEnsureOrchestrator",
     "AdbServerEnsurePolicy",
     "AdbServerEnsureResult",
     "AdbServerEnsureStatus",
     "AdbServerEnsureUnsatisfiedReason",
-    "AdbServerEnsureUnavailable",
     "AdbServerProbeResult",
     "AdbServerSatisfaction",
 ]
