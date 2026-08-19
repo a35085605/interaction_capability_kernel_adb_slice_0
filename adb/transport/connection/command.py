@@ -22,20 +22,40 @@ def _require_selector(value: object) -> AdbTransportSelector:
     return value
 
 
+@dataclass(frozen=True, slots=True, order=True)
+class AdbTcpAddress:
+    """Explicit TCP address accepted by ADB connect/disconnect commands."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "value",
+            _normalize_required_text(self.value, field_name="ADB TCP address"),
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class AdbTcpConnect:
     """Request one native attempt to connect one explicit TCP ADB endpoint."""
-    address: str
+
+    address: AdbTcpAddress
+
     def __post_init__(self) -> None:
-        object.__setattr__(self, "address", _normalize_required_text(self.address, field_name="ADB TCP address"))
+        if not isinstance(self.address, AdbTcpAddress):
+            raise TypeError("address must be AdbTcpAddress")
 
 
 @dataclass(frozen=True, slots=True)
 class AdbTcpDisconnect:
     """Request one native attempt to disconnect one explicit TCP ADB endpoint."""
-    address: str
+
+    address: AdbTcpAddress
+
     def __post_init__(self) -> None:
-        object.__setattr__(self, "address", _normalize_required_text(self.address, field_name="ADB TCP address"))
+        if not isinstance(self.address, AdbTcpAddress):
+            raise TypeError("address must be AdbTcpAddress")
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +93,6 @@ class AdbOfflineTransportsReconnector(Protocol):
 
 __all__ = [
     "AdbDeviceSideReconnect", "AdbDeviceSideReconnector", "AdbOfflineTransportsReconnect",
-    "AdbOfflineTransportsReconnector", "AdbTcpConnect", "AdbTcpConnector", "AdbTcpDisconnect",
-    "AdbTcpDisconnector", "AdbTransportReconnect", "AdbTransportReconnector",
+    "AdbOfflineTransportsReconnector", "AdbTcpAddress", "AdbTcpConnect", "AdbTcpConnector",
+    "AdbTcpDisconnect", "AdbTcpDisconnector", "AdbTransportReconnect", "AdbTransportReconnector",
 ]

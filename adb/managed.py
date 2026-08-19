@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from adb.server.endpoint import AdbServerEndpoint
-from adb.transport.binding import AdbTransportBindingConfiguration
+from adb.transport.binding import AdbConfiguredTransport
 
 
 class RegisteredTransport(Protocol):
@@ -56,7 +56,7 @@ class AdbManagedRuntime:
 
     def add_transport(
         self,
-        configuration: AdbTransportBindingConfiguration,
+        configuration: AdbConfiguredTransport,
         *,
         auto_recovery: bool = True,
     ) -> RegisteredTransport:

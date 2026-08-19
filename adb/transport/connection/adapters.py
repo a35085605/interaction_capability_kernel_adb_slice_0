@@ -24,12 +24,12 @@ class SubprocessAdbTransport:
     def connect(self, operation: AdbTcpConnect) -> NativeAttemptResult:
         if not isinstance(operation, AdbTcpConnect):
             raise TypeError("operation must be AdbTcpConnect")
-        return run_adb(self.executable, self.timeout_seconds, [*server_args(self.endpoint), "connect", operation.address])
+        return run_adb(self.executable, self.timeout_seconds, [*server_args(self.endpoint), "connect", operation.address.value])
 
     def disconnect(self, operation: AdbTcpDisconnect) -> NativeAttemptResult:
         if not isinstance(operation, AdbTcpDisconnect):
             raise TypeError("operation must be AdbTcpDisconnect")
-        return run_adb(self.executable, self.timeout_seconds, [*server_args(self.endpoint), "disconnect", operation.address])
+        return run_adb(self.executable, self.timeout_seconds, [*server_args(self.endpoint), "disconnect", operation.address.value])
 
     def reconnect(self, operation: AdbTransportReconnect) -> NativeAttemptResult:
         if not isinstance(operation, AdbTransportReconnect):

@@ -13,7 +13,7 @@ from adb.supervision.signal import (
     AdbTransportBindingResolutionChanged,
 )
 from adb.transport.binding import (
-    AdbTransportBindingConfiguration,
+    AdbConfiguredTransport,
     AdbTransportBindingResolution,
     AdbTransportBindingResolutionStatus,
     resolve_transport_binding,
@@ -41,7 +41,7 @@ class AdbTransportPreparationExecutor(Protocol):
 
 
 _PreparationFactory = Callable[
-    [AdbTransportBindingConfiguration],
+    [AdbConfiguredTransport],
     AdbTransportPreparationExecutor,
 ]
 _ThreadFactory = Callable[..., Thread]
@@ -55,7 +55,7 @@ def _default_thread_factory(*args, **kwargs) -> Thread:
 
 @dataclass(slots=True)
 class _BindingRegistration:
-    configuration: AdbTransportBindingConfiguration
+    configuration: AdbConfiguredTransport
     policy: AdbTransportBindingSupervisionPolicy
     resolution: AdbTransportBindingResolution | None = None
     session_id: AdbObservationSessionId | None = None
@@ -124,11 +124,11 @@ class AdbTransportBindingSupervisor:
 
     def register(
         self,
-        configuration: AdbTransportBindingConfiguration,
+        configuration: AdbConfiguredTransport,
         policy: AdbTransportBindingSupervisionPolicy | None = None,
     ) -> None:
-        if not isinstance(configuration, AdbTransportBindingConfiguration):
-            raise TypeError("configuration must be AdbTransportBindingConfiguration")
+        if not isinstance(configuration, AdbConfiguredTransport):
+            raise TypeError("configuration must be AdbConfiguredTransport")
         if configuration.endpoint != self.endpoint:
             raise ValueError("binding configuration endpoint does not match ADB server endpoint")
         if policy is None:
