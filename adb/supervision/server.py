@@ -7,11 +7,11 @@ from threading import Lock, Thread, current_thread
 
 from adb.server.endpoint import AdbServerEndpoint
 from adb.server.lifecycle import (
-    AdbServerEnsureAvailable,
+    AdbServerAvailability,
+    AdbServerEnsureAvailability,
     AdbServerEnsureOrchestrator,
     AdbServerEnsureResult,
     AdbServerEnsureStatus,
-    AdbServerEnsureUnavailable,
 )
 from adb.supervision.model import AdbServerRecoveryCycleId, AdbServerSupervisionPolicy
 from adb.supervision.signal import AdbServerRecoveryExhausted, AdbServerRecoveryRetryDue
@@ -128,7 +128,11 @@ class AdbServerSupervisor:
                 self._scheduler.cancel(old_token)
 
             result = self._ensure.ensure(
-                AdbServerEnsureAvailable(self.endpoint, self._policy.ensure_policy)
+                AdbServerEnsureAvailability(
+                    endpoint=self.endpoint,
+                    desired=AdbServerAvailability.AVAILABLE,
+                    policy=self._policy.ensure_policy,
+                )
             )
 
         if cycle_id is not None:
@@ -148,7 +152,11 @@ class AdbServerSupervisor:
             if old_token is not None:
                 self._scheduler.cancel(old_token)
             return self._ensure.ensure(
-                AdbServerEnsureUnavailable(self.endpoint, self._policy.ensure_policy)
+                AdbServerEnsureAvailability(
+                    endpoint=self.endpoint,
+                    desired=AdbServerAvailability.UNAVAILABLE,
+                    policy=self._policy.ensure_policy,
+                )
             )
 
     def set_recovery_enabled(self, enabled: bool) -> None:
@@ -243,7 +251,11 @@ class AdbServerSupervisor:
                     if not self._recovery_is_current_locked(cycle_id):
                         return
                 result = self._ensure.ensure(
-                    AdbServerEnsureAvailable(self.endpoint, self._policy.ensure_policy)
+                    AdbServerEnsureAvailability(
+                        endpoint=self.endpoint,
+                        desired=AdbServerAvailability.AVAILABLE,
+                        policy=self._policy.ensure_policy,
+                    )
                 )
             self._handle_recovery_result(cycle_id, attempt_number, result)
         finally:
