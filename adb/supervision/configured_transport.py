@@ -7,16 +7,16 @@ from typing import Protocol, runtime_checkable
 
 from adb.server.endpoint import AdbServerEndpoint
 from adb.errors import AdbError
-from adb.supervision.model import AdbTransportBindingSupervisionPolicy
+from adb.supervision.model import AdbConfiguredTransportSupervisionPolicy
 from adb.supervision.signal import (
-    AdbTransportBindingRecoveryExhausted,
-    AdbTransportBindingResolutionChanged,
+    AdbConfiguredTransportRecoveryExhausted,
+    AdbConfiguredTransportResolutionChanged,
 )
-from adb.transport.binding import (
-    AdbConfiguredTransport,
-    AdbTransportBindingResolution,
-    AdbTransportBindingResolutionStatus,
-    resolve_transport_binding,
+from adb.transport.configuration import AdbConfiguredTransport
+from adb.transport.resolution import (
+    AdbConfiguredTransportResolution,
+    AdbConfiguredTransportResolutionStatus,
+    resolve_configured_transport,
 )
 from adb.transport.devices.domain import AdbDevicesSnapshot
 from adb.transport.devices.query import AdbDevicesSnapshotReader
@@ -54,23 +54,23 @@ def _default_thread_factory(*args, **kwargs) -> Thread:
 
 
 @dataclass(slots=True)
-class _BindingRegistration:
+class _ConfiguredTransportRegistration:
     configuration: AdbConfiguredTransport
-    policy: AdbTransportBindingSupervisionPolicy
-    resolution: AdbTransportBindingResolution | None = None
+    policy: AdbConfiguredTransportSupervisionPolicy
+    resolution: AdbConfiguredTransportResolution | None = None
     session_id: AdbObservationSessionId | None = None
     recovery_attempted_for_absence: bool = False
     recovery_thread: Thread | None = None
 
 
-class AdbTransportBindingSupervisor:
-    """Long-lived projection and bounded recovery for caller-registered ADB bindings.
+class AdbConfiguredTransportSupervisor:
+    """Long-lived projection and bounded recovery for caller-registered configured transports.
 
-    The transport-inventory observer remains server-wide and binding-agnostic. This supervisor
-    holds binding configuration only for the explicit registration lifetime, projects complete
-    inventory snapshots into binding resolutions, and may run one bounded preparation episode
-    for each observed absence episode. It does not infer physical-device availability and does
-    not retry indefinitely after a failed preparation.
+    The transport-inventory observer remains server-wide and configuration-agnostic. This
+    supervisor holds each configured transport only for its explicit registration lifetime,
+    projects complete inventory snapshots into configured-transport resolutions, and may run one
+    bounded preparation episode for each observed absence episode. It does not infer
+    physical-device availability and does not retry indefinitely after a failed preparation.
     """
 
     def __init__(
@@ -102,16 +102,16 @@ class AdbTransportBindingSupervisor:
         self._preparation_factory = preparation_factory
         self._thread_factory = _thread_factory
         self._lock = Lock()
-        self._registrations: dict[AdbDeviceSerial, _BindingRegistration] = {}
+        self._registrations: dict[AdbDeviceSerial, _ConfiguredTransportRegistration] = {}
         self._subscriptions: tuple[EventSubscriptionToken, ...] = ()
         self._closed = False
 
     def start(self) -> None:
         with self._lock:
             if self._closed:
-                raise RuntimeError("transport binding supervisor is closed")
+                raise RuntimeError("configured transport supervisor is closed")
             if self._subscriptions:
-                raise RuntimeError("transport binding supervisor is already started")
+                raise RuntimeError("configured transport supervisor is already started")
             started = self._bus.subscribe(
                 AdbDevicesObservationStarted,
                 self._on_observation_started,
@@ -125,25 +125,25 @@ class AdbTransportBindingSupervisor:
     def register(
         self,
         configuration: AdbConfiguredTransport,
-        policy: AdbTransportBindingSupervisionPolicy | None = None,
+        policy: AdbConfiguredTransportSupervisionPolicy | None = None,
     ) -> None:
         if not isinstance(configuration, AdbConfiguredTransport):
             raise TypeError("configuration must be AdbConfiguredTransport")
         if configuration.endpoint != self.endpoint:
-            raise ValueError("binding configuration endpoint does not match ADB server endpoint")
+            raise ValueError("configured transport endpoint does not match ADB server endpoint")
         if policy is None:
-            policy = AdbTransportBindingSupervisionPolicy()
-        if not isinstance(policy, AdbTransportBindingSupervisionPolicy):
-            raise TypeError("policy must be AdbTransportBindingSupervisionPolicy")
+            policy = AdbConfiguredTransportSupervisionPolicy()
+        if not isinstance(policy, AdbConfiguredTransportSupervisionPolicy):
+            raise TypeError("policy must be AdbConfiguredTransportSupervisionPolicy")
 
         with self._lock:
             if self._closed:
-                raise RuntimeError("transport binding supervisor is closed")
+                raise RuntimeError("configured transport supervisor is closed")
             if not self._subscriptions:
-                raise RuntimeError("transport binding supervisor must be started before register")
+                raise RuntimeError("configured transport supervisor must be started before register")
             if configuration.serial in self._registrations:
-                raise ValueError("ADB transport binding is already registered")
-            self._registrations[configuration.serial] = _BindingRegistration(
+                raise ValueError("ADB configured transport is already registered")
+            self._registrations[configuration.serial] = _ConfiguredTransportRegistration(
                 configuration,
                 policy,
             )
@@ -160,7 +160,7 @@ class AdbTransportBindingSupervisor:
     def resolution(
         self,
         serial: AdbDeviceSerial,
-    ) -> AdbTransportBindingResolution | None:
+    ) -> AdbConfiguredTransportResolution | None:
         if not isinstance(serial, AdbDeviceSerial):
             raise TypeError("serial must be AdbDeviceSerial")
         with self._lock:
@@ -235,18 +235,18 @@ class AdbTransportBindingSupervisor:
             )
             for registration in registrations:
                 previous = registration.resolution
-                current = resolve_transport_binding(registration.configuration, snapshot)
+                current = resolve_configured_transport(registration.configuration, snapshot)
                 baseline_changed = registration.session_id != session_id
                 changed = baseline_changed or previous != current
                 registration.session_id = session_id
                 registration.resolution = current
 
-                if current.status is not AdbTransportBindingResolutionStatus.ABSENT:
+                if current.status is not AdbConfiguredTransportResolutionStatus.ABSENT:
                     registration.recovery_attempted_for_absence = False
 
                 if changed:
                     publications.append(
-                        AdbTransportBindingResolutionChanged(
+                        AdbConfiguredTransportResolutionChanged(
                             session_id,
                             previous if not baseline_changed else None,
                             current,
@@ -254,7 +254,7 @@ class AdbTransportBindingSupervisor:
                     )
 
                 should_recover = (
-                    current.status is AdbTransportBindingResolutionStatus.ABSENT
+                    current.status is AdbConfiguredTransportResolutionStatus.ABSENT
                     and registration.policy.preparation_policy is not None
                     and not registration.recovery_attempted_for_absence
                     and registration.recovery_thread is None
@@ -321,7 +321,7 @@ class AdbTransportBindingSupervisor:
                     )
             else:
                 self._bus.publish(
-                    AdbTransportBindingRecoveryExhausted(configuration, result)
+                    AdbConfiguredTransportRecoveryExhausted(configuration, result)
                 )
         finally:
             relaunch = False
@@ -333,7 +333,7 @@ class AdbTransportBindingSupervisor:
                         not self._closed
                         and registration.resolution is not None
                         and registration.resolution.status
-                        is AdbTransportBindingResolutionStatus.ABSENT
+                        is AdbConfiguredTransportResolutionStatus.ABSENT
                         and registration.policy.preparation_policy is not None
                         and not registration.recovery_attempted_for_absence
                     )
@@ -343,4 +343,4 @@ class AdbTransportBindingSupervisor:
                 self._launch_recovery(serial)
 
 
-__all__ = ["AdbTransportBindingSupervisor", "AdbTransportPreparationExecutor"]
+__all__ = ["AdbConfiguredTransportSupervisor", "AdbTransportPreparationExecutor"]

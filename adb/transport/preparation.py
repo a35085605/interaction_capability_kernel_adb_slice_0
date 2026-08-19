@@ -7,10 +7,10 @@ from time import monotonic
 
 from adb.server.endpoint import AdbServerEndpoint
 from adb.errors import AdbError
-from adb.transport.binding import (
-    AdbTransportBindingConfiguration,
-    AdbTransportBindingResolutionStatus,
-    resolve_transport_binding,
+from adb.transport.configuration import AdbConfiguredTransport
+from adb.transport.resolution import (
+    AdbConfiguredTransportResolutionStatus,
+    resolve_configured_transport,
 )
 from adb.transport.connection import AdbTcpConnect, AdbTcpConnector
 from adb.transport.devices.domain import AdbDevicesSnapshot, AdbTrackedDevice
@@ -53,7 +53,7 @@ class AdbTransportPreparationOrchestrator:
     def __init__(
         self,
         endpoint: AdbServerEndpoint,
-        binding_configuration: AdbTransportBindingConfiguration,
+        configuration: AdbConfiguredTransport,
         snapshot_reader: AdbDevicesSnapshotReader,
         connector: AdbTcpConnector,
         event_bus: EventBus,
@@ -63,10 +63,10 @@ class AdbTransportPreparationOrchestrator:
     ) -> None:
         if not isinstance(endpoint, AdbServerEndpoint):
             raise TypeError("endpoint must be AdbServerEndpoint")
-        if not isinstance(binding_configuration, AdbTransportBindingConfiguration):
-            raise TypeError("binding_configuration must be AdbTransportBindingConfiguration")
-        if binding_configuration.endpoint != endpoint:
-            raise ValueError("binding configuration endpoint does not match ADB server endpoint")
+        if not isinstance(configuration, AdbConfiguredTransport):
+            raise TypeError("configuration must be AdbConfiguredTransport")
+        if configuration.endpoint != endpoint:
+            raise ValueError("configured transport endpoint does not match ADB server endpoint")
         if not callable(getattr(snapshot_reader, "read", None)):
             raise TypeError("snapshot_reader must provide read()")
         if not callable(getattr(connector, "connect", None)):
@@ -78,7 +78,7 @@ class AdbTransportPreparationOrchestrator:
         if not isinstance(observation, AdbDevicesObservationController):
             raise TypeError("observation must satisfy observation controller")
         self.endpoint = endpoint
-        self.binding_configuration = binding_configuration
+        self.configuration = configuration
         self._snapshot_reader = snapshot_reader
         self._connector = connector
         self._bus = event_bus
@@ -96,7 +96,7 @@ class AdbTransportPreparationOrchestrator:
             raise TypeError("policy must be AdbTransportPreparationPolicy")
         if operation.endpoint != self.endpoint:
             raise ValueError("operation endpoint does not match configured ADB server endpoint")
-        if operation.serial != self.binding_configuration.serial:
+        if operation.serial != self.configuration.serial:
             raise ValueError("operation serial does not match configured ADB transport")
 
         session_id = self._observation.active_session_id
@@ -182,7 +182,7 @@ class AdbTransportPreparationOrchestrator:
                         terminal is AdbTransportPreparationStatus.SATISFIED
                     ),
                 )
-            if presence is None and self.binding_configuration.connect_address is not None:
+            if presence is None and self.configuration.connect_address is not None:
                 connect_attempted = True
                 attempts.append(self._connect())
 
@@ -283,7 +283,7 @@ class AdbTransportPreparationOrchestrator:
             if (
                 presence is None
                 and not connect_attempted
-                and self.binding_configuration.connect_address is not None
+                and self.configuration.connect_address is not None
             ):
                 connect_attempted = True
                 attempts.append(self._connect())
@@ -300,11 +300,11 @@ class AdbTransportPreparationOrchestrator:
         AdbTrackedDevice | None,
         AdbTransportPreparationStatus | None,
     ]:
-        resolution = resolve_transport_binding(self.binding_configuration, snapshot)
+        resolution = resolve_configured_transport(self.configuration, snapshot)
 
-        if resolution.status is AdbTransportBindingResolutionStatus.AMBIGUOUS:
+        if resolution.status is AdbConfiguredTransportResolutionStatus.AMBIGUOUS:
             return presence, None, AdbTransportPreparationStatus.AMBIGUOUS
-        if resolution.status is AdbTransportBindingResolutionStatus.ABSENT:
+        if resolution.status is AdbConfiguredTransportResolutionStatus.ABSENT:
             return presence, None, None
 
         row = resolution.row
@@ -323,7 +323,7 @@ class AdbTransportPreparationOrchestrator:
         return presence, row, None
 
     def _connect(self) -> NativeAttemptResult:
-        address = self.binding_configuration.connect_address
+        address = self.configuration.connect_address
         assert address is not None
         command = AdbTcpConnect(address)
         attempt = self._connector.connect(command)

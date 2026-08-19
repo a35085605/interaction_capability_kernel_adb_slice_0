@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import Protocol
 
 from adb.server.endpoint import AdbServerEndpoint
-from adb.transport.binding import AdbConfiguredTransport
+from adb.transport.configuration import AdbConfiguredTransport
 
 
 class RegisteredTransport(Protocol):
-    """One transport binding managed by the ADB runtime."""
+    """One configured transport registration managed by the ADB runtime."""
 
     def set_auto_recovery(self, enabled: bool) -> None:
-        """Enable or disable automatic re-establishment of this binding."""
+        """Enable or disable automatic re-establishment of this configured transport."""
         ...
 
 
@@ -60,7 +60,7 @@ class AdbManagedRuntime:
         *,
         auto_recovery: bool = True,
     ) -> RegisteredTransport:
-        """Register one transport binding for managed observation/recovery."""
+        """Register one configured transport for managed observation/recovery."""
         raise NotImplementedError
 
     def remove_transport(self, transport: RegisteredTransport) -> None:
