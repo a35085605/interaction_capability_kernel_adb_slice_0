@@ -66,8 +66,8 @@ def _normalize_retry_configuration(
 
 
 @dataclass(frozen=True, slots=True)
-class AdbTransportBindingSupervisionPolicy:
-    """Long-lived binding projection with optional one-shot recovery per absence episode."""
+class AdbConfiguredTransportSupervisionPolicy:
+    """Long-lived configured-transport projection with optional recovery per absence episode."""
 
     preparation_policy: AdbTransportPreparationPolicy | None = None
 
@@ -184,9 +184,9 @@ class AdbDevicesObservationSupervisionPolicy:
 
 
 __all__ = [
+    "AdbConfiguredTransportSupervisionPolicy",
     "AdbDevicesObservationEstablishmentCycleId",
     "AdbDevicesObservationSupervisionPolicy",
     "AdbServerRecoveryCycleId",
     "AdbServerSupervisionPolicy",
-    "AdbTransportBindingSupervisionPolicy",
 ]

@@ -8,10 +8,8 @@ from adb.supervision.model import (
     AdbDevicesObservationEstablishmentCycleId,
     AdbServerRecoveryCycleId,
 )
-from adb.transport.binding import (
-    AdbConfiguredTransport,
-    AdbTransportBindingResolution,
-)
+from adb.transport.configuration import AdbConfiguredTransport
+from adb.transport.resolution import AdbConfiguredTransportResolution
 from adb.transport.observation.contracts import AdbObservationSessionId
 from adb.transport.orchestration import (
     AdbTransportPreparationResult,
@@ -20,34 +18,34 @@ from adb.transport.orchestration import (
 
 
 @dataclass(frozen=True, slots=True)
-class AdbTransportBindingResolutionChanged:
-    """Signal carrying one registered binding projection within an observation generation."""
+class AdbConfiguredTransportResolutionChanged:
+    """Signal carrying one configured-transport projection within an observation generation."""
 
     session_id: AdbObservationSessionId
-    previous: AdbTransportBindingResolution | None
-    current: AdbTransportBindingResolution
+    previous: AdbConfiguredTransportResolution | None
+    current: AdbConfiguredTransportResolution
 
     def __post_init__(self) -> None:
         if not isinstance(self.session_id, AdbObservationSessionId):
             raise TypeError("session_id must be AdbObservationSessionId")
         if self.previous is not None and not isinstance(
-            self.previous, AdbTransportBindingResolution
+            self.previous, AdbConfiguredTransportResolution
         ):
-            raise TypeError("previous must be AdbTransportBindingResolution or None")
-        if not isinstance(self.current, AdbTransportBindingResolution):
-            raise TypeError("current must be AdbTransportBindingResolution")
+            raise TypeError("previous must be AdbConfiguredTransportResolution or None")
+        if not isinstance(self.current, AdbConfiguredTransportResolution):
+            raise TypeError("current must be AdbConfiguredTransportResolution")
         if self.current.configuration.endpoint != self.session_id.endpoint:
-            raise ValueError("binding resolution endpoint must match observation session")
+            raise ValueError("configured transport resolution endpoint must match observation session")
         if self.previous is not None and (
             self.previous.configuration.serial
             != self.current.configuration.serial
         ):
-            raise ValueError("binding resolution change must keep one serial")
+            raise ValueError("configured transport resolution change must keep one serial")
 
 
 @dataclass(frozen=True, slots=True)
-class AdbTransportBindingRecoveryExhausted:
-    """Signal that automatic recovery ended unsatisfied for one registered binding."""
+class AdbConfiguredTransportRecoveryExhausted:
+    """Signal that automatic recovery ended unsatisfied for one configured transport."""
 
     configuration: AdbConfiguredTransport
     result: AdbTransportPreparationResult
@@ -58,9 +56,9 @@ class AdbTransportBindingRecoveryExhausted:
         if not isinstance(self.result, AdbTransportPreparationResult):
             raise TypeError("result must be AdbTransportPreparationResult")
         if self.result.operation.endpoint != self.configuration.endpoint:
-            raise ValueError("recovery result endpoint must match binding configuration")
+            raise ValueError("recovery result endpoint must match configured transport")
         if self.result.operation.serial != self.configuration.serial:
-            raise ValueError("recovery result serial must match binding configuration")
+            raise ValueError("recovery result serial must match configured transport")
         if self.result.status is AdbTransportPreparationStatus.SATISFIED:
             raise ValueError("recovery exhausted signal requires an unsatisfied result")
 
@@ -152,8 +150,8 @@ class AdbDevicesObservationEstablishmentExhausted:
 
 
 AdbSupervisionSignal: TypeAlias = (
-    AdbTransportBindingResolutionChanged
-    | AdbTransportBindingRecoveryExhausted
+    AdbConfiguredTransportResolutionChanged
+    | AdbConfiguredTransportRecoveryExhausted
     | AdbServerRecoveryRetryDue
     | AdbServerRecoveryExhausted
     | AdbDevicesObservationEstablishmentRetryDue
@@ -162,11 +160,11 @@ AdbSupervisionSignal: TypeAlias = (
 
 
 __all__ = [
+    "AdbConfiguredTransportRecoveryExhausted",
+    "AdbConfiguredTransportResolutionChanged",
     "AdbDevicesObservationEstablishmentExhausted",
     "AdbDevicesObservationEstablishmentRetryDue",
     "AdbServerRecoveryExhausted",
     "AdbServerRecoveryRetryDue",
     "AdbSupervisionSignal",
-    "AdbTransportBindingRecoveryExhausted",
-    "AdbTransportBindingResolutionChanged",
 ]
