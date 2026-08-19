@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Protocol
+
+from adb.server.endpoint import AdbServerEndpoint
+from adb.transport.selection import AdbTransportSelector
 
 
 def _normalize_feature(value: object) -> str:
@@ -30,4 +34,15 @@ class AdbTransportFeatures:
         return feature in self.features
 
 
-__all__ = ["AdbTransportFeatures"]
+class AdbTransportFeaturesReader(Protocol):
+    """Read feature facts for one deterministically selected ADB transport."""
+
+    def read(
+        self,
+        endpoint: AdbServerEndpoint,
+        selector: AdbTransportSelector,
+    ) -> AdbTransportFeatures:
+        ...
+
+
+__all__ = ["AdbTransportFeatures", "AdbTransportFeaturesReader"]
