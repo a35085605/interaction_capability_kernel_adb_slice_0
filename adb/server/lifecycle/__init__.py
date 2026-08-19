@@ -8,28 +8,24 @@ from adb.server.lifecycle.command import (
 )
 from adb.server.lifecycle.ensure import (
     AdbServerAvailability,
-    AdbServerEnsureAvailable,
-    AdbServerEnsureOperation,
+    AdbServerEnsureAvailability,
     AdbServerEnsureOrchestrator,
     AdbServerEnsurePolicy,
     AdbServerEnsureResult,
     AdbServerEnsureStatus,
     AdbServerEnsureUnsatisfiedReason,
-    AdbServerEnsureUnavailable,
     AdbServerProbeResult,
     AdbServerSatisfaction,
 )
 
 __all__ = [
     "AdbServerAvailability",
-    "AdbServerEnsureAvailable",
-    "AdbServerEnsureOperation",
+    "AdbServerEnsureAvailability",
     "AdbServerEnsureOrchestrator",
     "AdbServerEnsurePolicy",
     "AdbServerEnsureResult",
     "AdbServerEnsureStatus",
     "AdbServerEnsureUnsatisfiedReason",
-    "AdbServerEnsureUnavailable",
     "AdbServerProbeResult",
     "AdbServerSatisfaction",
     "AdbServerStart",
