@@ -28,8 +28,8 @@ class AdbServerEndpointAllocator(Protocol):
     ) -> AdbServerEndpoint: ...
 
 
-class SequentialLocalAdbServerEndpointAllocator:
-    """Allocate registry-unique localhost endpoints from an increasing port range.
+class SequentialAdbServerEndpointAllocator:
+    """Allocate registry-unique endpoints for one host from an increasing port range.
 
     The allocator does not probe operating-system socket availability. Provisioning
     owns only endpoint reservation; a caller-owned server id, if any, is associated
@@ -62,8 +62,8 @@ class SequentialLocalAdbServerEndpointAllocator:
 
 
 @runtime_checkable
-class AdbServerProvisioner(Protocol):
-    """Reserve native ADB server endpoints without caller identity semantics."""
+class AdbServerEndpointProvisioner(Protocol):
+    """Reserve ADB server endpoints without caller identity semantics."""
 
     def provision(
         self,
@@ -72,7 +72,7 @@ class AdbServerProvisioner(Protocol):
     ) -> AdbServerEndpoint: ...
 
 
-class InMemoryAdbServerProvisioner:
+class InMemoryAdbServerEndpointProvisioner:
     """Reserve distinct ADB server endpoints for one process-local scope.
 
     Caller-owned logical server identities and their endpoint bindings deliberately
@@ -82,7 +82,7 @@ class InMemoryAdbServerProvisioner:
     """
 
     def __init__(self, allocator: AdbServerEndpointAllocator | None = None) -> None:
-        allocator = allocator or SequentialLocalAdbServerEndpointAllocator()
+        allocator = allocator or SequentialAdbServerEndpointAllocator()
         if not callable(getattr(allocator, "allocate", None)):
             raise TypeError("allocator must provide allocate()")
         self._allocator = allocator
@@ -117,8 +117,8 @@ __all__ = [
     "AdbServerEndpointAllocator",
     "AdbServerEndpointConflictError",
     "AdbServerEndpointExhaustedError",
-    "AdbServerProvisioner",
+    "AdbServerEndpointProvisioner",
     "AdbServerProvisioningError",
-    "InMemoryAdbServerProvisioner",
-    "SequentialLocalAdbServerEndpointAllocator",
+    "InMemoryAdbServerEndpointProvisioner",
+    "SequentialAdbServerEndpointAllocator",
 ]
